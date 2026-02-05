@@ -248,6 +248,26 @@ async function start() {
         const fireContainer = new PIXI.Container();
         fireContainer.x = x; fireContainer.y = y;
 
+        const wood = new PIXI.Graphics();
+        // Poleno 1 (vodorovné)
+        wood.roundRect(-12, -3, 24, 6, 2).fill(0x3e2723);
+        // Poleno 2 (svislé) - nakreslíme ho jako otočený obdélník ručně
+        wood.roundRect(-3, -12, 6, 24, 2).fill(0x5d4037);
+        
+        fireContainer.addChild(wood);
+
+        const flame = new PIXI.Graphics();
+        fireContainer.addChild(flame);
+        fireContainer.flame = flame;
+
+        const light = new PIXI.Graphics().circle(0,0, 180).fill({color: 0xffaa00, alpha: 0.15});
+        light.blendMode = 'add';
+        layers.weather.addChild(light);
+        fireContainer.light = light;
+
+        return fireContainer;
+    }
+
         // Polena na zemi
         const wood = new PIXI.Graphics();
 // První poleno
@@ -628,20 +648,14 @@ wood.pop(); // Vrátíme stav
         };
 
        update: () => {
-    // Kontrola, jestli textová pole vůbec existují, než do nich zapíšeme
-    if (UIManager.woodText) {
-        UIManager.woodText.text = `🌲 Dřevo: ${Math.floor(GameState.wood)}`;
+        // Použijeme bezpečné hledání prvků v kontejneru
+        if (UIManager.woodText) {
+            UIManager.woodText.text = `🌲 Dřevo: ${Math.floor(GameState.wood)}`;
+        }
+        if (UIManager.stoneText) {
+            UIManager.stoneText.text = `🪨 Kámen: ${Math.floor(GameState.stone)}`;
+        }
     }
-    if (UIManager.stoneText) {
-        UIManager.stoneText.text = `🪨 Kámen: ${Math.floor(GameState.stone)}`;
-    }
-    if (UIManager.foodText) {
-        UIManager.foodText.text = `🍖 Jídlo: ${Math.floor(GameState.food)}`;
-    }
-    if (UIManager.popText) {
-        UIManager.popText.text = `👤 Lidé: ${GameState.population}`;
-    }
-
     // Čas a zbytek...
     const hour = Math.floor(GameState.time * 24);
     const minute = Math.floor((GameState.time * 24 * 60) % 60);

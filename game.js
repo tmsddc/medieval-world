@@ -243,17 +243,14 @@ async function start() {
         return con;
     },
 
-    // Vytvoření efektu ohně (Táborák)
+// ... (začátek createFireEffect) ...
     createFireEffect: (x, y) => {
         const fireContainer = new PIXI.Container();
         fireContainer.x = x; fireContainer.y = y;
 
         const wood = new PIXI.Graphics();
-        // Poleno 1 (vodorovné)
         wood.roundRect(-12, -3, 24, 6, 2).fill(0x3e2723);
-        // Poleno 2 (svislé) - nakreslíme ho jako otočený obdélník ručně
         wood.roundRect(-3, -12, 6, 24, 2).fill(0x5d4037);
-        
         fireContainer.addChild(wood);
 
         const flame = new PIXI.Graphics();
@@ -266,34 +263,7 @@ async function start() {
         fireContainer.light = light;
 
         return fireContainer;
-    }
-
-        // Polena na zemi
-        const wood = new PIXI.Graphics();
-// První poleno
-wood.roundRect(-12, -5, 24, 6, 2).fill(0x3e2723);
-// Druhé poleno nakreslíme přímo otočené, nebudeme ho hledat v "children"
-wood.push(); // Uložíme stav
-wood.rotate(Math.PI / 2);
-wood.roundRect(-12, -5, 24, 6, 2).fill(0x5d4037);
-wood.pop(); // Vrátíme stav
-        fireContainer.addChild(wood);
-
-        // Plamen (Grafika, která se bude měnit v update loopu)
-        const flame = new PIXI.Graphics();
-        fireContainer.addChild(flame);
-        fireContainer.flame = flame; // Reference pro animaci
-
-        // Světlo (Glow)
-        const light = new PIXI.Graphics().circle(0,0, 180).fill({color: 0xffaa00, alpha: 0.15});
-        light.blendMode = 'add'; // Režim prolnutí pro "svícení"
-        
-        // Přidáme světlo do vrstvy weather (aby bylo nad terénem ale pod UI)
-        layers.weather.addChild(light);
-        fireContainer.light = light;
-
-        return fireContainer;
-    }
+    } // Zde končí funkce
 
     // --- KONEC MODULU GRAFIKA ---
     };
@@ -646,7 +616,7 @@ wood.pop(); // Vrátíme stav
             UIManager.hudContainer.addChild(c);
             return t;
         };
-
+},
        update: () => {
         // Použijeme bezpečné hledání prvků v kontejneru
         if (UIManager.woodText) {
@@ -943,7 +913,7 @@ wood.pop(); // Vrátíme stav
 
     // Spuštění generátoru (zatím prázdný)
     MapGenerator.init();
-
+    AISystem.init();
     UIManager.init();
 
     console.log("Jádro motoru spuštěno. Čekám na moduly...");

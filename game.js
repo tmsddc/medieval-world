@@ -89,183 +89,120 @@ async function start() {
     const GraphicsEngine = {
         // --- ZAČÁTEK MODULU GRAFIKA ---
 
-    // Pomocná funkce pro kreslení nepravidelných "blobů" (koruny stromů, keře)
-    drawOrganicBlob: (g, x, y, size, color) => {
-        g.beginPath();
-        const segments = 12; // Více segmentů = detailnější tvar
-        const points = [];
-        for (let i = 0; i <= segments; i++) {
-            const angle = (i / segments) * Math.PI * 2;
-            // Náhodná variace poloměru dělá tvar "přírodním"
-            const radius = size + (Math.random() - 0.5) * (size * 0.35);
-            points.push(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-        }
-        g.poly(points).fill(color);
-        g.closePath();
-    },
-
-    // Univerzální stín (automaticky se přizpůsobuje velikosti objektu)
-    createShadow: (target, width, height) => {
-        const shadow = new PIXI.Graphics();
-        shadow.ellipse(0, 0, width, height).fill({color: 0x000000, alpha: 0.3});
-        // Stín posuneme pod objekt
-        shadow.y = 10; 
-        // Přidáme ho do vrstvy stínů, ne do objektu (aby se nepřekrývaly špatně)
-        layers.shadows.addChild(shadow);
-        target.shadowRef = shadow; // Uložíme odkaz, abychom s ním mohli hýbat
-        return shadow;
-    },
-
-    // Vykreslení ultra-detailního stromu
-    renderTree: (x, y) => {
-        const tree = new PIXI.Container();
-        tree.x = x; tree.y = y;
-
-        // 1. Stín
-        GraphicsEngine.createShadow(tree, 22, 8);
-
-        const g = new PIXI.Graphics();
-        
-        // 2. Kmen (texturovaný proužky)
-        g.rect(-5, -15, 10, 30).fill(0x3e2723); // Základ
-        g.rect(-2, -15, 2, 25).fill(0x4e342e); // Světlejší kůra
-
-        // 3. Listí (3 vrstvy pro 3D efekt a hloubku)
-        // Spodní tmavá vrstva (stín uvnitř stromu)
-        GraphicsEngine.drawOrganicBlob(g, 0, -35, 22, 0x142b08);
-        // Střední vrstva
-        GraphicsEngine.drawOrganicBlob(g, -8, -40, 18, 0x1e420b);
-        GraphicsEngine.drawOrganicBlob(g, 8, -38, 18, 0x265c0d);
-        // Horní světlá vrstva (osvětlená sluncem)
-        GraphicsEngine.drawOrganicBlob(g, 0, -45, 15, 0x3d8c16);
-
-        tree.addChild(g);
-        
-        // Přidáme náhodný offset pro animaci větru (aby se nehýbaly synchronizovaně)
-        tree.windOffset = Math.random() * 100;
-        
-        return tree;
-    },
-
-    // Vykreslení kamene s fasetami (odlesky)
-    renderRock: (x, y) => {
-        const rock = new PIXI.Container();
-        rock.x = x; rock.y = y;
-
-        GraphicsEngine.createShadow(rock, 28, 10);
-
-        const g = new PIXI.Graphics();
-        
-        // Hlavní hmota kamene
-        g.poly([-20,0, -15,-25, 5,-30, 25,-10, 15,10, -10,8]).fill(0x555555);
-        
-        // Světlá faseta (odlesk shora)
-        g.poly([-10,-20, 5,-25, 20,-10, 5,-5, -5,-10]).fill({color: 0x777777, alpha: 0.8});
-        
-        // Tmavá prasklina/detail
-        g.poly([0,-5, 5,5, 3,8]).fill({color: 0x333333, alpha: 0.5});
-
-        rock.addChild(g);
-        return rock;
-    },
-
-    // Vykreslení detailní postavy (s vybavením podle profese)
-    renderUnit: (unitData) => {
-        const con = new PIXI.Container();
-        const g = new PIXI.Graphics();
-        con.addChild(g);
-
-        // Stín postavy
-        const shadow = GraphicsEngine.createShadow(con, 10, 4);
-        
-        // Barvy podle profese
-        const colors = {
-            skin: 0xffdbac,
-            lumber: { body: 0x5d4037, tool: 0xaaaaff }, // Hnědá + Sekera
-            miner: { body: 0x455a64, tool: 0x555555 },  // Šedá + Krumpáč
-            soldier: { body: 0xb71c1c, tool: 0xeeeeee }, // Červená + Meč
-            idle: { body: 0xe0e0e0, tool: null }        // Bílá
-        };
-        
-        const style = colors[unitData.job] || colors.idle;
-
-        // --- Kreslení postavy ---
-        g.clear();
-        
-        // 1. Tělo (není kulička, má tvar)
-        g.roundRect(-7, -18, 14, 16, 4).fill(style.body); // Trup
-        
-        // 2. Hlava
-        g.circle(0, -22, 6).fill(colors.skin); 
-        
-        // 3. Detaily obličeje (oči)
-        g.rect(-2, -23, 1, 2).fill(0x000000);
-        g.rect(2, -23, 1, 2).fill(0x000000);
-
-        // 4. Batoh (pokud nese surovinu)
-        if (unitData.hasItem) {
-            g.rect(-5, -10, 10, 8).fill(0x8d6e63).stroke({width:1, color:0x3e2723});
-        }
-
-        // 5. Ruce (budou se animovat zvlášť)
-        con.handL = new PIXI.Graphics().circle(0,0, 2.5).fill(colors.skin);
-        con.handR = new PIXI.Graphics().circle(0,0, 2.5).fill(colors.skin);
-        // Pozicování rukou
-        con.handL.position.set(-8, -12);
-        con.handR.position.set(8, -12);
-        
-        // Nástroj v pravé ruce
-        if (style.tool) {
-            const tool = new PIXI.Graphics();
-            if (unitData.job === 'lumber') {
-                tool.rect(-2,-10, 4, 20).fill(0x6d4c41); // Násada
-                tool.poly([-5,-8, 5,-8, 8,0, -5,0]).fill(0xcccccc); // Čepel sekery
-            } else if (unitData.job === 'soldier') {
-                tool.rect(-2,-15, 4, 25).fill(0xcccccc); // Čepel meče
-                tool.rect(-5,-5, 10, 2).fill(0x3e2723); // Záštita
+        // Pomocná funkce pro kreslení nepravidelných "blobů"
+        drawOrganicBlob: (g, x, y, size, color) => {
+            g.beginPath();
+            const segments = 12;
+            const points = [];
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const radius = size + (Math.random() - 0.5) * (size * 0.35);
+                points.push(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
             }
-            tool.rotation = -0.5; // Mírně nakloněný
-            con.handR.addChild(tool);
-        }
+            g.poly(points).fill(color);
+            g.closePath();
+        },
 
-        con.addChild(con.handL);
-        con.addChild(con.handR);
+        // Univerzální stín
+        createShadow: (target, width, height) => {
+            const shadow = new PIXI.Graphics();
+            shadow.ellipse(0, 0, width, height).fill({color: 0x000000, alpha: 0.3});
+            shadow.y = 10; 
+            layers.shadows.addChild(shadow);
+            target.shadowRef = shadow;
+            return shadow;
+        },
 
-        // 6. Level indikátor (Hvězdičky nad hlavou)
-        if (unitData.lvl > 1) {
-            for(let i=0; i < unitData.lvl; i++) {
-                const star = new PIXI.Graphics().poly([0,-3, 1,0, 0,3, -1,0]).fill(0xffd700);
-                star.y = -32 - (i*5);
-                con.addChild(star);
+        // Vykreslení stromu
+        renderTree: (x, y) => {
+            const tree = new PIXI.Container();
+            tree.x = x; tree.y = y;
+            GraphicsEngine.createShadow(tree, 22, 8);
+            const g = new PIXI.Graphics();
+            g.rect(-5, -15, 10, 30).fill(0x3e2723);
+            g.rect(-2, -15, 2, 25).fill(0x4e342e);
+            GraphicsEngine.drawOrganicBlob(g, 0, -35, 22, 0x142b08);
+            GraphicsEngine.drawOrganicBlob(g, -8, -40, 18, 0x1e420b);
+            GraphicsEngine.drawOrganicBlob(g, 8, -38, 18, 0x265c0d);
+            GraphicsEngine.drawOrganicBlob(g, 0, -45, 15, 0x3d8c16);
+            tree.addChild(g);
+            tree.windOffset = Math.random() * 100;
+            return tree;
+        },
+
+        // Vykreslení kamene
+        renderRock: (x, y) => {
+            const rock = new PIXI.Container();
+            rock.x = x; rock.y = y;
+            GraphicsEngine.createShadow(rock, 28, 10);
+            const g = new PIXI.Graphics();
+            g.poly([-20,0, -15,-25, 5,-30, 25,-10, 15,10, -10,8]).fill(0x555555);
+            g.poly([-10,-20, 5,-25, 20,-10, 5,-5, -5,-10]).fill({color: 0x777777, alpha: 0.8});
+            g.poly([0,-5, 5,5, 3,8]).fill({color: 0x333333, alpha: 0.5});
+            rock.addChild(g);
+            return rock;
+        },
+
+        // Vykreslení postavy
+        renderUnit: (unitData) => {
+            const con = new PIXI.Container();
+            const g = new PIXI.Graphics();
+            con.addChild(g);
+            GraphicsEngine.createShadow(con, 10, 4);
+            const colors = {
+                skin: 0xffdbac, lumber: { body: 0x5d4037, tool: 0xaaaaff },
+                miner: { body: 0x455a64, tool: 0x555555 }, soldier: { body: 0xb71c1c, tool: 0xeeeeee },
+                idle: { body: 0xe0e0e0, tool: null }
+            };
+            const style = colors[unitData.job] || colors.idle;
+            g.clear();
+            g.roundRect(-7, -18, 14, 16, 4).fill(style.body);
+            g.circle(0, -22, 6).fill(colors.skin); 
+            g.rect(-2, -23, 1, 2).fill(0x000000); g.rect(2, -23, 1, 2).fill(0x000000);
+            if (unitData.hasItem) g.rect(-5, -10, 10, 8).fill(0x8d6e63).stroke({width:1, color:0x3e2723});
+            
+            con.handL = new PIXI.Graphics().circle(0,0, 2.5).fill(colors.skin);
+            con.handR = new PIXI.Graphics().circle(0,0, 2.5).fill(colors.skin);
+            con.handL.position.set(-8, -12); con.handR.position.set(8, -12);
+            
+            if (style.tool) {
+                const tool = new PIXI.Graphics();
+                if (unitData.job === 'lumber') { tool.rect(-2,-10, 4, 20).fill(0x6d4c41); tool.poly([-5,-8, 5,-8, 8,0, -5,0]).fill(0xcccccc); } 
+                else if (unitData.job === 'soldier') { tool.rect(-2,-15, 4, 25).fill(0xcccccc); tool.rect(-5,-5, 10, 2).fill(0x3e2723); }
+                tool.rotation = -0.5; con.handR.addChild(tool);
             }
+            con.addChild(con.handL, con.handR);
+            if (unitData.lvl > 1) {
+                for(let i=0; i < unitData.lvl; i++) {
+                    const star = new PIXI.Graphics().poly([0,-3, 1,0, 0,3, -1,0]).fill(0xffd700);
+                    star.y = -32 - (i*5); con.addChild(star);
+                }
+            }
+            return con;
+        },
+
+        // Vytvoření efektu ohně (Táborák)
+        createFireEffect: (x, y) => {
+            const fireContainer = new PIXI.Container();
+            fireContainer.x = x; fireContainer.y = y;
+
+            const wood = new PIXI.Graphics();
+            wood.roundRect(-12, -3, 24, 6, 2).fill(0x3e2723);
+            wood.roundRect(-3, -12, 6, 24, 2).fill(0x5d4037);
+            fireContainer.addChild(wood);
+
+            const flame = new PIXI.Graphics();
+            fireContainer.addChild(flame);
+            fireContainer.flame = flame;
+
+            const light = new PIXI.Graphics().circle(0,0, 180).fill({color: 0xffaa00, alpha: 0.15});
+            light.blendMode = 'add';
+            layers.weather.addChild(light);
+            fireContainer.light = light;
+
+            return fireContainer;
         }
-
-        return con;
-    },
-
-// ... (začátek createFireEffect) ...
-    createFireEffect: (x, y) => {
-        const fireContainer = new PIXI.Container();
-        fireContainer.x = x; fireContainer.y = y;
-
-        const wood = new PIXI.Graphics();
-        wood.roundRect(-12, -3, 24, 6, 2).fill(0x3e2723);
-        wood.roundRect(-3, -12, 6, 24, 2).fill(0x5d4037);
-        fireContainer.addChild(wood);
-
-        const flame = new PIXI.Graphics();
-        fireContainer.addChild(flame);
-        fireContainer.flame = flame;
-
-        const light = new PIXI.Graphics().circle(0,0, 180).fill({color: 0xffaa00, alpha: 0.15});
-        light.blendMode = 'add';
-        layers.weather.addChild(light);
-        fireContainer.light = light;
-
-        return fireContainer;
-    } // Zde končí funkce
-
-    // --- KONEC MODULU GRAFIKA ---
+        // --- KONEC MODULU GRAFIKA ---
     };
 
     /*
@@ -585,254 +522,162 @@ async function start() {
     const UIManager = {
         // --- ZAČÁTEK MODULU UI ---
 
-    // Kontejnery pro UI prvky
-    hudContainer: new PIXI.Container(),
-    selectionPanel: new PIXI.Container(),
-    cursorMarker: new PIXI.Graphics(), // Ukazatel kam klikáme
+        hudContainer: new PIXI.Container(),
+        selectionPanel: new PIXI.Container(),
+        cursorMarker: new PIXI.Graphics(),
+        dragState: { isDragging: false, lastX: 0, lastY: 0 },
 
-    // Stav pro ovládání kamery
-    dragState: { isDragging: false, lastX: 0, lastY: 0 },
-
-    init: () => {
-        console.log("Startuji UI a ovládání kamery...");
-        
-        // 1. VYTVOŘENÍ HORNÍ LIŠTY (Zdroje)
-        const topBar = new PIXI.Graphics();
-        topBar.rect(0, 0, window.innerWidth, 50).fill({color: 0x000000, alpha: 0.7});
-        topBar.stroke({width: 2, color: 0x444444});
-        UIManager.hudContainer.addChild(topBar);
-
-        // Styly textu
-        const style = { fontFamily: 'Arial', fontSize: 16, fill: '#ffffff', fontWeight: 'bold', dropShadow: true, dropShadowDistance: 2 };
-        const labelStyle = { fontFamily: 'Arial', fontSize: 12, fill: '#aaaaaa' };
-
-        // Helper pro vytvoření počítadla
-        const createCounter = (icon, label, x) => {
-            const c = new PIXI.Container();
-            c.x = x; c.y = 10;
-            const t = new PIXI.Text({text: `${icon} ${label}: 0`, style: style});
-            t.name = label.toLowerCase(); // Pro update
-            c.addChild(t);
-            UIManager.hudContainer.addChild(c);
-            return t;
-        };
-},
-       update: () => {
-        // Použijeme bezpečné hledání prvků v kontejneru
-        if (UIManager.woodText) {
-            UIManager.woodText.text = `🌲 Dřevo: ${Math.floor(GameState.wood)}`;
-        }
-        if (UIManager.stoneText) {
-            UIManager.stoneText.text = `🪨 Kámen: ${Math.floor(GameState.stone)}`;
-        }
-    }
-    // Čas a zbytek...
-    const hour = Math.floor(GameState.time * 24);
-    const minute = Math.floor((GameState.time * 24 * 60) % 60);
-    if (UIManager.timeText) {
-        UIManager.timeText.text = `Den ${GameState.day} | ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    }
-}
-
-        // 2. VYTVOŘENÍ INSPEKTORA JEDNOTEK (Levý dolní roh)
-        UIManager.createSelectionPanel();
-
-        // 3. PŘIDÁNÍ DO SCÉNY
-        layers.ui.addChild(UIManager.hudContainer);
-        layers.ui.addChild(UIManager.selectionPanel);
-
-        // 4. NASTAVENÍ OVLÁDÁNÍ KAMERY A KLIKÁNÍ
-        UIManager.setupInput();
-        
-        // Kurzory
-        UIManager.cursorMarker.circle(0,0,5).fill(0xffffff);
-        UIManager.cursorMarker.visible = false;
-        layers.ui.addChild(UIManager.cursorMarker);
-    },
-
-    createSelectionPanel: () => {
-        const p = UIManager.selectionPanel;
-        p.visible = false; // Na začátku skryté
-        p.x = 20;
-        p.y = window.innerHeight - 150;
-
-        // Pozadí
-        const bg = new PIXI.Graphics();
-        bg.rect(0, 0, 300, 130).fill({color: 0x111111, alpha: 0.9}).stroke({width: 2, color: 0xffd700});
-        p.addChild(bg);
-
-        // Prvky panelu (uložíme reference pro update)
-        const titleStyle = { fontSize: 18, fill: '#ffd700', fontWeight: 'bold' };
-        const infoStyle = { fontSize: 14, fill: '#cccccc' };
-
-        p.lblName = new PIXI.Text({text: "Jednotka", style: titleStyle});
-        p.lblName.position.set(15, 10);
-        
-        p.lblJob = new PIXI.Text({text: "Povolání: ---", style: infoStyle});
-        p.lblJob.position.set(15, 40);
-
-        p.lblAction = new PIXI.Text({text: "Činnost: ---", style: infoStyle});
-        p.lblAction.position.set(15, 65);
-
-        // HP Bar
-        p.hpBar = new PIXI.Graphics();
-        p.hpBar.position.set(15, 95);
-        
-        p.addChild(p.lblName, p.lblJob, p.lblAction, p.hpBar);
-    },
-
-    setupInput: () => {
-        // Použijeme interactionPlate z Core pro chytání událostí na celé ploše
-        interactionPlate.eventMode = 'static';
-        
-        // --- ZOOMOVÁNÍ (Kolečko) ---
-        document.addEventListener('wheel', (e) => {
-            const zoomSpeed = 0.1;
-            const direction = e.deltaY > 0 ? -1 : 1;
-            let newScale = GameState.camera.zoom + (direction * zoomSpeed);
+        init: () => {
+            console.log("Startuji UI a ovládání kamery...");
             
-            // Limity zoomu
-            newScale = Math.max(0.3, Math.min(newScale, 2.5));
+            // 1. Horní lišta
+            const topBar = new PIXI.Graphics();
+            topBar.rect(0, 0, window.innerWidth, 50).fill({color: 0x000000, alpha: 0.7});
+            topBar.stroke({width: 2, color: 0x444444});
+            UIManager.hudContainer.addChild(topBar);
+
+            const style = { fontFamily: 'Arial', fontSize: 16, fill: '#ffffff', fontWeight: 'bold' };
             
-            // Aplikace zoomu na kameru
-            GameState.camera.zoom = newScale;
-            camera.scale.set(newScale);
+            // Inicializace textů
+            UIManager.woodText = new PIXI.Text({text: '', style: style});
+            UIManager.woodText.position.set(20, 15);
             
-            // (Pokročilé: Zoomování k myši by vyžadovalo posun x/y, 
-            // pro jednoduchost zoomujeme do středu obrazovky nebo zachováme pozici)
-        });
-
-        // --- POSUN KAMERY (Drag) & KLIKÁNÍ ---
-        interactionPlate.on('pointerdown', (e) => {
-            UIManager.dragState.isDragging = true;
-            UIManager.dragState.lastX = e.global.x;
-            UIManager.dragState.lastY = e.global.y;
+            UIManager.stoneText = new PIXI.Text({text: '', style: style});
+            UIManager.stoneText.position.set(150, 15);
             
-            // Zjistíme, jestli jsme klikli na jednotku
-            // Převedeme souřadnice obrazovky na souřadnice světa
-            const worldPos = UIManager.screenToWorld(e.global.x, e.global.y);
-            UIManager.handleClick(worldPos.x, worldPos.y);
-        });
+            UIManager.foodText = new PIXI.Text({text: '', style: style});
+            UIManager.foodText.position.set(280, 15);
 
-        interactionPlate.on('pointerup', () => {
-            UIManager.dragState.isDragging = false;
-        });
+            UIManager.popText = new PIXI.Text({text: '', style: style});
+            UIManager.popText.position.set(410, 15);
 
-        interactionPlate.on('pointerupoutside', () => {
-            UIManager.dragState.isDragging = false;
-        });
+            UIManager.timeText = new PIXI.Text({text: "Den 1 | 12:00", style: { ...style, fill: '#ffd700' }});
+            UIManager.timeText.anchor.set(1, 0);
+            UIManager.timeText.x = window.innerWidth - 20;
+            UIManager.timeText.y = 10;
 
-        interactionPlate.on('pointermove', (e) => {
-            if (UIManager.dragState.isDragging) {
-                const dx = e.global.x - UIManager.dragState.lastX;
-                const dy = e.global.y - UIManager.dragState.lastY;
+            UIManager.hudContainer.addChild(UIManager.woodText, UIManager.stoneText, UIManager.foodText, UIManager.popText, UIManager.timeText);
+
+            // 2. Panel a kurzor
+            UIManager.createSelectionPanel();
+            layers.ui.addChild(UIManager.hudContainer);
+            layers.ui.addChild(UIManager.selectionPanel);
+
+            UIManager.cursorMarker.circle(0,0,5).fill(0xffffff);
+            UIManager.cursorMarker.visible = false;
+            layers.ui.addChild(UIManager.cursorMarker);
+
+            // 3. Spuštění inputů (Tohle musí být uvnitř initu!)
+            UIManager.setupInput();
+        },
+
+        createSelectionPanel: () => {
+            const p = UIManager.selectionPanel;
+            p.visible = false;
+            p.x = 20; p.y = window.innerHeight - 150;
+            const bg = new PIXI.Graphics();
+            bg.rect(0, 0, 300, 130).fill({color: 0x111111, alpha: 0.9}).stroke({width: 2, color: 0xffd700});
+            p.addChild(bg);
+            
+            const titleStyle = { fontSize: 18, fill: '#ffd700', fontWeight: 'bold' };
+            const infoStyle = { fontSize: 14, fill: '#cccccc' };
+
+            p.lblName = new PIXI.Text({text: "Jednotka", style: titleStyle}); p.lblName.position.set(15, 10);
+            p.lblJob = new PIXI.Text({text: "Povolání: ---", style: infoStyle}); p.lblJob.position.set(15, 40);
+            p.lblAction = new PIXI.Text({text: "Činnost: ---", style: infoStyle}); p.lblAction.position.set(15, 65);
+            p.hpBar = new PIXI.Graphics(); p.hpBar.position.set(15, 95);
+            p.addChild(p.lblName, p.lblJob, p.lblAction, p.hpBar);
+        },
+
+        setupInput: () => {
+            interactionPlate.eventMode = 'static';
+            document.addEventListener('wheel', (e) => {
+                const zoomSpeed = 0.1;
+                const direction = e.deltaY > 0 ? -1 : 1;
+                let newScale = Math.max(0.3, Math.min(GameState.camera.zoom + (direction * zoomSpeed), 2.5));
+                GameState.camera.zoom = newScale;
+                camera.scale.set(newScale);
+            });
+
+            interactionPlate.on('pointerdown', (e) => {
+                UIManager.dragState.isDragging = true;
+                UIManager.dragState.lastX = e.global.x; UIManager.dragState.lastY = e.global.y;
+                const worldPos = UIManager.screenToWorld(e.global.x, e.global.y);
+                UIManager.handleClick(worldPos.x, worldPos.y);
+            });
+            interactionPlate.on('pointerup', () => UIManager.dragState.isDragging = false);
+            interactionPlate.on('pointerupoutside', () => UIManager.dragState.isDragging = false);
+            interactionPlate.on('pointermove', (e) => {
+                if (UIManager.dragState.isDragging) {
+                    camera.x += e.global.x - UIManager.dragState.lastX;
+                    camera.y += e.global.y - UIManager.dragState.lastY;
+                    UIManager.dragState.lastX = e.global.x; UIManager.dragState.lastY = e.global.y;
+                }
+            });
+        },
+
+        screenToWorld: (screenX, screenY) => {
+            return { x: (screenX - camera.x) / camera.scale.x, y: (screenY - camera.y) / camera.scale.y };
+        },
+
+        handleClick: (x, y) => {
+            UIManager.cursorMarker.x = x * camera.scale.x + camera.x;
+            UIManager.cursorMarker.y = y * camera.scale.y + camera.y;
+            UIManager.cursorMarker.visible = true;
+            setTimeout(() => { UIManager.cursorMarker.visible = false; }, 200);
+
+            let clickedUnit = null;
+            Entities.units.forEach(u => {
+                if(Math.sqrt((u.x - x)**2 + (u.y - y)**2) < 30) clickedUnit = u;
+            });
+
+            if (clickedUnit) UIManager.selectUnit(clickedUnit);
+            else if (GameState.selectedUnit) {
+                if(GameState.selectedUnit.job !== 'idle') { /* Zatím nic */ }
+                else GameState.selectedUnit.target = {x, y};
                 
-                // Posun kamery
-                camera.x += dx;
-                camera.y += dy;
-                
-                UIManager.dragState.lastX = e.global.x;
-                UIManager.dragState.lastY = e.global.y;
-            }
-        });
-    },
-
-    // Převod souřadnic z obrazovky do herního světa (bere v potaz zoom a posun)
-    screenToWorld: (screenX, screenY) => {
-        return {
-            x: (screenX - camera.x) / camera.scale.x,
-            y: (screenY - camera.y) / camera.scale.y
-        };
-    },
-
-    handleClick: (x, y) => {
-        // Efekt kliknutí (Visual Marker)
-        UIManager.cursorMarker.x = x * camera.scale.x + camera.x; // Jen pro efekt v UI vrstvě
-        UIManager.cursorMarker.y = y * camera.scale.y + camera.y;
-        UIManager.cursorMarker.visible = true;
-        setTimeout(() => { UIManager.cursorMarker.visible = false; }, 200);
-
-        // 1. Zkusíme vybrat jednotku
-        let clickedUnit = null;
-        // Projdeme všechny jednotky a zjistíme vzdálenost k myši
-        Entities.units.forEach(u => {
-            const dist = Math.sqrt((u.x - x)**2 + (u.y - y)**2);
-            if (dist < 30) { // Tolerance kliknutí
-                clickedUnit = u;
-            }
-        });
-
-        if (clickedUnit) {
-            UIManager.selectUnit(clickedUnit);
-        } else {
-            // Kliknutí do prázdna
-            if (GameState.selectedUnit) {
-                // Pokud máme vybráno, pošleme jednotku na toto místo (pokud to není flákač)
-                // (Toto by šlo vylepšit v AI modulu o nucený pohyb)
                 GameState.selectedUnit = null;
                 UIManager.selectionPanel.visible = false;
-                
-                // Odznačení vizuálně (zrušíme kroužek pod postavou)
-                Entities.units.forEach(u => {
-                    if(u.container.selectionRing) u.container.selectionRing.visible = false;
-                });
+                Entities.units.forEach(u => { if(u.container.selectionRing) u.container.selectionRing.visible = false; });
+            }
+        },
+
+        selectUnit: (unit) => {
+            GameState.selectedUnit = unit;
+            UIManager.selectionPanel.visible = true;
+            Entities.units.forEach(u => {
+                if (!u.container.selectionRing) {
+                    const ring = new PIXI.Graphics().circle(0,0, 15).stroke({width:2, color:0x00ff00});
+                    u.container.addChildAt(ring, 0); u.container.selectionRing = ring;
+                }
+                u.container.selectionRing.visible = (u === unit);
+            });
+        },
+
+        update: () => {
+            if (UIManager.woodText) UIManager.woodText.text = `🌲 Dřevo: ${Math.floor(GameState.wood)}`;
+            if (UIManager.stoneText) UIManager.stoneText.text = `🪨 Kámen: ${Math.floor(GameState.stone)}`;
+            if (UIManager.foodText) UIManager.foodText.text = `🍖 Jídlo: ${Math.floor(GameState.food)}`;
+            if (UIManager.popText) UIManager.popText.text = `👤 Lidé: ${GameState.population}`;
+
+            const hour = Math.floor(GameState.time * 24);
+            const minute = Math.floor((GameState.time * 24 * 60) % 60);
+            if (UIManager.timeText) {
+                UIManager.timeText.text = `Den ${GameState.day} | ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                UIManager.timeText.style.fill = (hour > 20 || hour < 5) ? '#ff4444' : '#ffd700';
+            }
+
+            if (GameState.selectedUnit && UIManager.selectionPanel.visible) {
+                const u = GameState.selectedUnit;
+                const p = UIManager.selectionPanel;
+                p.lblName.text = `Vesničan ${u.job.toUpperCase()}`;
+                p.lblJob.text = `Povolání: ${u.job}`;
+                p.lblAction.text = `Stav: ${u.state} (Lvl ${u.lvl})`;
+                p.hpBar.clear().rect(0,0, 200, 10).fill(0x330000).rect(0,0, 200 * (u.hp / 100), 10).fill(0x00ff00);
             }
         }
-    },
-
-    selectUnit: (unit) => {
-        GameState.selectedUnit = unit;
-        UIManager.selectionPanel.visible = true;
-
-        // Vizuální kroužek pod postavou
-        Entities.units.forEach(u => {
-            if (!u.container.selectionRing) {
-                const ring = new PIXI.Graphics();
-                ring.circle(0,0, 15).stroke({width:2, color:0x00ff00});
-                ring.visible = false;
-                u.container.addChildAt(ring, 0); // Pod postavu
-                u.container.selectionRing = ring;
-            }
-            u.container.selectionRing.visible = (u === unit);
-        });
-    },
-
-    update: () => {
-        // 1. Update textů
-        UIManager.woodText.text = `🌲 Dřevo: ${Math.floor(GameState.wood)}`;
-        UIManager.stoneText.text = `🪨 Kámen: ${Math.floor(GameState.stone)}`;
-        UIManager.foodText.text = `🍖 Jídlo: ${Math.floor(GameState.food)}`;
-        UIManager.popText.text = `👤 Lidé: ${GameState.population}`;
-
-        // Čas
-        const hour = Math.floor(GameState.time * 24);
-        const minute = Math.floor((GameState.time * 24 * 60) % 60);
-        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        UIManager.timeText.text = `Den ${GameState.day} | ${timeStr}`;
-        
-        // Barva času (červená v noci)
-        UIManager.timeText.style.fill = (hour > 20 || hour < 5) ? '#ff4444' : '#ffd700';
-
-        // 2. Update panelu výběru
-        if (GameState.selectedUnit && UIManager.selectionPanel.visible) {
-            const u = GameState.selectedUnit;
-            const p = UIManager.selectionPanel;
-            
-            p.lblName.text = `Vesničan ${u.job.toUpperCase()}`;
-            p.lblJob.text = `Povolání: ${u.job}`;
-            p.lblAction.text = `Stav: ${u.state} (Lvl ${u.lvl})`;
-            
-            // HP Bar update
-            p.hpBar.clear();
-            p.hpBar.rect(0,0, 200, 10).fill(0x330000);
-            p.hpBar.rect(0,0, 200 * (u.hp / 100), 10).fill(0x00ff00);
-        }
-    }
-
-    // --- KONEC MODULU UI ---
-       
+        // --- KONEC MODULU UI ---
     };
-
     // ==========================================
     // INPUT SYSTEM (OVLÁDÁNÍ MYŠÍ A KLÁVESNICÍ)
     // ==========================================

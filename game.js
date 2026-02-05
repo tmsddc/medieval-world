@@ -366,7 +366,7 @@ async function start() {
     }
 
     // --- KONEC MODULU MAPA ---
-        init: () => { console.log("Mapa zatím prázdná..."); }
+        
     };
 
     /*
@@ -832,7 +832,7 @@ async function start() {
     }
 
     // --- KONEC MODULU UI ---
-        update: () => {}
+       
     };
 
     // ==========================================
@@ -916,9 +916,11 @@ async function start() {
     // Spuštění generátoru (zatím prázdný)
     MapGenerator.init();
 
+    UIManager.init();
+
     console.log("Jádro motoru spuštěno. Čekám na moduly...");
 }
 
 // Spuštění
 start();
-UIManager.init();
+

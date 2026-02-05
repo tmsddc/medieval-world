@@ -250,9 +250,13 @@ async function start() {
 
         // Polena na zemi
         const wood = new PIXI.Graphics();
-        wood.roundRect(-12, -5, 24, 6, 2).fill(0x3e2723);
-        wood.roundRect(-12, -5, 24, 6, 2).fill(0x5d4037);
-        wood.children[1].rotation = Math.PI / 2; // Křížem
+// První poleno
+wood.roundRect(-12, -5, 24, 6, 2).fill(0x3e2723);
+// Druhé poleno nakreslíme přímo otočené, nebudeme ho hledat v "children"
+wood.push(); // Uložíme stav
+wood.rotate(Math.PI / 2);
+wood.roundRect(-12, -5, 24, 6, 2).fill(0x5d4037);
+wood.pop(); // Vrátíme stav
         fireContainer.addChild(wood);
 
         // Plamen (Grafika, která se bude měnit v update loopu)
@@ -623,18 +627,28 @@ async function start() {
             return t;
         };
 
-        // Rozmístění počítadel
-        UIManager.woodText = createCounter('🌲', 'Wood', 20);
-        UIManager.stoneText = createCounter('🪨', 'Stone', 150);
-        UIManager.foodText = createCounter('🍖', 'Food', 280);
-        UIManager.popText = createCounter('zzz', 'Pop', 410); // Ikona panáčka nefunguje vždy, zzz je ok
-        
-        // Ukazatel času (Den/Noc)
-        UIManager.timeText = new PIXI.Text({text: "Den 1 | 12:00", style: { ...style, fill: '#ffd700' }});
-        UIManager.timeText.anchor.set(1, 0);
-        UIManager.timeText.x = window.innerWidth - 20;
-        UIManager.timeText.y = 10;
-        UIManager.hudContainer.addChild(UIManager.timeText);
+       update: () => {
+    // Kontrola, jestli textová pole vůbec existují, než do nich zapíšeme
+    if (UIManager.woodText) {
+        UIManager.woodText.text = `🌲 Dřevo: ${Math.floor(GameState.wood)}`;
+    }
+    if (UIManager.stoneText) {
+        UIManager.stoneText.text = `🪨 Kámen: ${Math.floor(GameState.stone)}`;
+    }
+    if (UIManager.foodText) {
+        UIManager.foodText.text = `🍖 Jídlo: ${Math.floor(GameState.food)}`;
+    }
+    if (UIManager.popText) {
+        UIManager.popText.text = `👤 Lidé: ${GameState.population}`;
+    }
+
+    // Čas a zbytek...
+    const hour = Math.floor(GameState.time * 24);
+    const minute = Math.floor((GameState.time * 24 * 60) % 60);
+    if (UIManager.timeText) {
+        UIManager.timeText.text = `Den ${GameState.day} | ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    }
+}
 
         // 2. VYTVOŘENÍ INSPEKTORA JEDNOTEK (Levý dolní roh)
         UIManager.createSelectionPanel();
